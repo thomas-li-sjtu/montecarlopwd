@@ -1,3 +1,4 @@
+# standard library
 import bisect  # 针对有序数组的插入和排序操作的一个模块(二分查找算法模块，可以在已排序的列表等序列容器中查找与插入值)
 import bz2
 import collections
@@ -8,9 +9,9 @@ import operator
 import pickle
 import random
 import shelve
-
 import numpy as np
 
+# internal imports
 import model
 
 __default = object()  # 返回一个新的无特征对象

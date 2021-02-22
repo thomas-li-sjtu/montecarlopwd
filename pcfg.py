@@ -1,25 +1,15 @@
-# Copyright 2016 Symantec Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-
+# standard library
 import bisect
 import collections
 import itertools
 import math
 import random
 import re
-
 import numpy
 
+# internal imports
 import model
 
-
-def zerodict():
-    return collections.defaultdict(itertools.repeat(0).__next__)
 
 L, D, S = range(3)
 pattern_re = re.compile(r'(?:([a-zA-Z]+)|([0-9]+)|[^a-zA-Z0-9]+)')
@@ -41,7 +31,7 @@ class PCFG(model.Model):
     def __init__(self, training, dictionary=None, with_counts=False):
 
         LDS = collections.defaultdict(zerodict)
-        structures = zerodict()
+        structures = collections.defaultdict(itertools.repeat(0).__next__)
 
         if not with_counts:
             training = ((1, w) for w in training)
