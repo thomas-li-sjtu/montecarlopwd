@@ -9,6 +9,7 @@ import backoff
 import model
 import ngram_chain
 import pcfg
+import estimator
 
 
 def parser_args():
@@ -56,7 +57,7 @@ def build_models(args, training):
     """
     now = time.time()
     models = {'{}-gram'.format(i): ngram_chain.NGramModel(training, i)
-              for i in range(args.min_ngram, args.max_ngram + 1)}
+              for i in range(args.min_ngram, args.max_ngram + 1)}  # ngram没有考虑稀疏性的问题，这个在Backoff中被解决
     # models['Backoff'] = backoff.BackoffModel(training, threshold=args.backoff_threshold)
     # models['PCFG'] = pcfg.PCFG(training)
     print("[ + ] models have been built in {}".format(time.time()-now))
@@ -75,7 +76,7 @@ if __name__ == '__main__':
     now = time.time()
     montaCarlo_samples = {name: list(model.sample(args.samplesize, args.maxlen))
                           for name, model in models.items()}
-    estimators = {name: model.PosEstimator(sample)
+    estimators = {name: estimator.PosEstimator(sample)
                   for name, sample in montaCarlo_samples.items()}
     print("[ + ] estimators have been built in {}".format(time.time()-now))
     modelnames = sorted(models)
