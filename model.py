@@ -16,7 +16,7 @@ class Model(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def generate(self):
+    def generate(self, maxlen=100):
         """Generate a random password according to the model.
 
         Returns (logprob, passwd); passwd is the random password and
@@ -24,9 +24,9 @@ class Model(metaclass=abc.ABCMeta):
         """
         pass
 
-    def sample(self, n):
+    def sample(self, n, maxlen=100):
         """Generate a sample of n passwords."""
-        return (self.generate() for _ in range(n))
+        return (self.generate(maxlen=maxlen) for _ in range(n))
 
     @abc.abstractmethod
     def logprob(self, word):

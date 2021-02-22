@@ -14,7 +14,7 @@ import pcfg
 def parser_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--password-file', "-i",
-                        default="../Data/origin/CSDN/CSDN_10_train.txt",
+                        default="../Data/origin/CSDN/CSDN_10_test.txt",
                         dest="dataset",
                         help='password training set')
     parser.add_argument('--guess-file', "-g",
@@ -41,6 +41,10 @@ def parser_args():
                         type=int,
                         default=10000,
                         help='sample size for Monte Carlo model')
+    parser.add_argument('--maxlen',
+                        type=int,
+                        default=100,
+                        help='max length for generated passwords')
     args = parser.parse_args()
 
     return args
@@ -69,7 +73,7 @@ if __name__ == '__main__':
 
     # 蒙特卡洛模型建立
     now = time.time()
-    montaCarlo_samples = {name: list(model.sample(args.samplesize))
+    montaCarlo_samples = {name: list(model.sample(args.samplesize, args.maxlen))
                           for name, model in models.items()}
     estimators = {name: model.PosEstimator(sample)
                   for name, sample in montaCarlo_samples.items()}

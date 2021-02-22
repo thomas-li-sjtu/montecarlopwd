@@ -1,4 +1,4 @@
-import bisect
+import bisect  # 针对有序数组的插入和排序操作的一个模块(二分查找算法模块，可以在已排序的列表等序列容器中查找与插入值)
 import bz2
 import collections
 import heapq
@@ -13,7 +13,7 @@ import numpy as np
 
 import model
 
-__default = object()
+__default = object()  # 返回一个新的无特征对象
 
 
 def default_start(n):
@@ -32,11 +32,11 @@ def ngrams_counter(words, n, start=__default, end='\0', with_counts=False):
         start = default_start(n)
     if not with_counts:
         words = ((1, w) for w in words)
-    res = collections.defaultdict(itertools.repeat(0).__next__)
+    res = collections.defaultdict(itertools.repeat(0).__next__)  # n元组字典，默认值为0
     for count, word in words:
-        word = start + word + end
+        word = start + word + end  # 密码转换为：起始符号+密码+终止符号
         for i in range(len(word) - n + 1):
-            res[word[i:i + n]] += count
+            res[word[i:i + n]] += count  # 建立字典，字典值为n元组出现次数
     return res
 
 
@@ -67,7 +67,6 @@ Node = collections.namedtuple('Node', 'transitions cumprobs logprobs')
 
 
 class NGramModel(model.Model):
-
     def setup_nodes(self, shelfname, flags='c'):
         self.shelfname = shelfname
         if shelfname is None:
@@ -83,9 +82,9 @@ class NGramModel(model.Model):
         return cls([], *args, shelfname=shelfname, **kwargs)
 
     def __init__(self, words, n, with_counts=False, shelfname=None):
-        self.start = start = default_start(n)
-        self.end = end = '\0'
-        transitions = collections.defaultdict(list)
+        self.start = start = default_start(n)  # 对密码第一个字符，需要添加特殊符号，形成n元组  这里特殊符号为'\0'
+        self.end = end = '\0'  # 特殊结束符号，与特殊起始符号相同
+        transitions = collections.defaultdict(list)  # 转换字典，键为状态（即前n-1个字符），值为元组（频次，第n个字符）
         for ngram, count in ngrams_counter(words, n, start, end,
                                            with_counts).items():
             state, transition = ngram[:-1], ngram[-1]  # ngram 的前 n-1 位，以及 ngram 的最后一位
@@ -94,24 +93,26 @@ class NGramModel(model.Model):
         flags = 'c' if words else 'r'
         self.nodes = nodes = self.setup_nodes(shelfname, flags)
         for state, ctlist in transitions.items():
+            # itemgetter函数用于获取对象的某些维的数据，这里相当于根据元组的count，对一个state排序
             ctlist.sort(reverse=True, key=operator.itemgetter(0))
-            total = sum(c for c, _ in ctlist)
+            total = sum(c for c, _ in ctlist)  # 某一个state的频次
             transitions, cumprobs, logprobs = [], [], []
             cum_counts = 0
-            for count, transition in ctlist:
+            for count, transition in ctlist:  # 对一个state下元组(count, transition)列表的每个元素
                 cum_counts += count
                 transitions.append(transition)
-                cumprobs.append(cum_counts / total)
-                logprobs.append(-math.log2(count / total))
-            nodes[state] = Node(''.join(transitions),
+                cumprobs.append(cum_counts / total)  # 用于之后根据概率区间采样，即[0.5,0.8,1.0] 第一个元素采样概率0.5，第二个0.3，第三个0.2
+                logprobs.append(-math.log2(count / total))  # 对应概率取对数
+            nodes[state] = Node(''.join(transitions),  # 一个state对应的所有可能的第n个字符
                                 np.array(cumprobs),
-                                np.array(logprobs))
+                                np.array(logprobs))  # 所有可能的第n个字符概率对数
 
     def __del__(self):
         if self.shelfname is not None:
             self.nodes.close()
 
     def update_state(self, state, transition):
+        # 当前的state根据第n个元素transition转换到下一个state：abcd + e 转换到 bcde
         return (state + transition)[1:]
 
     def __iter__(self, threshold=float('inf')):
@@ -151,13 +152,15 @@ class NGramModel(model.Model):
         logprob = 0
         for _ in range(maxlen):
             node = self.nodes[state]
+            # 实现按概率采样
+            # bisect_left(a,x)：a是一个有序列表，查看x应当插入a的位置，返回位置下标（如[0.6, 1]，0.7 则返回2）
             idx = bisect.bisect_left(node.cumprobs, random.random())
             transition = node.transitions[idx]
             logprob += node.logprobs[idx]
             if transition == self.end:
                 break
-            state = self.update_state(state, transition)
-            word.append(transition)
+            state = self.update_state(state, transition)  # 更新state，准备生成下一个字符
+            word.append(transition)  # 加入字符
         return logprob, ''.join(word)
 
     def logprob(self, word, leaveout=False):
@@ -176,7 +179,6 @@ class NGramModel(model.Model):
         return res
 
     def generate_by_threshold(self, threshold, lower_threshold=0, maxlen=100):
-
         # Efficient generation of passwords -- Ma et al., S&P 2014
         nodes = self.nodes
         start = self.start
@@ -209,8 +211,8 @@ class NGramModel(model.Model):
 
 
 class TextGenerator(NGramModel):
-
-    def __init__(self, phrases, n, with_counts=False, shelfname=None):
+    def __init__(self, phrases, n, words, with_counts=False, shelfname=None):
+        super().__init__(phrases, n, with_counts, shelfname)
         self.start = start = ('',) * (n - 1)
         self.end = end = ('',)
         transitions = collections.defaultdict(list)
