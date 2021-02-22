@@ -51,6 +51,7 @@ def parse_textfile(fname='/usr/share/dict/words'):
 
 def parse_rockyou(fname='datasets/rockyou-withcount.txt.bz2'):
     res = []
+    #
     with bz2.open(fname) as f:
         lines = (line.rstrip() for line in f)
         for l in lines:
