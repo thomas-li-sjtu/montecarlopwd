@@ -16,6 +16,7 @@ pattern_re = re.compile(r'(?:([a-zA-Z]+)|([0-9]+)|[^a-zA-Z0-9]+)')
 
 
 def patterns(w):
+    # 以 ab12ab123 为例，返回 ((0, 2), (1, 2), (0, 2), (1, 3)) 和 ['ab', '12', 'cd', '123']
     structure, groups = [], []
     for match in pattern_re.finditer(w):
         L_pat, D_pat = match.groups()
@@ -26,6 +27,10 @@ def patterns(w):
     return tuple(structure), groups
 
 
+def zerodict():
+    return collections.defaultdict(itertools.repeat(0).__next__)
+
+
 class PCFG(model.Model):
 
     def __init__(self, training, dictionary=None, with_counts=False):
@@ -33,17 +38,19 @@ class PCFG(model.Model):
         LDS = collections.defaultdict(zerodict)
         structures = collections.defaultdict(itertools.repeat(0).__next__)
 
+        # 输入数据没有计数信息，是纯文本
         if not with_counts:
             training = ((1, w) for w in training)
 
         for count, w in training:
             structure, groups = patterns(w)
-            structures[tuple(structure)] += count
-            for pat_pair, group in zip(structure, groups):
+            structures[tuple(structure)] += count  # 结构字典：{((0, 2), (1, 2), (0, 2), (1, 3)): 4, ...}
+            # 如果字典为空，则根据密码本身计算 L 字典，D 字典，S 字典
+            for pat_pair, group in zip(structure, groups):  # {L2: {ab: 1}, ...}
                 if dictionary is None or pat_pair[0] != L:
                     LDS[pat_pair][group] += count
-
-        if dictionary is not None:
+        # 如果字典不为空，则根据字典计算 L 字典
+        if dictionary is not None:  # 如果字典不为空，则根据字典
             L_re = re.compile(r'[a-zA-Z]+')
             for w, count in dictionary.items():
                 for pat in L_re.findall(w):
@@ -54,8 +61,8 @@ class PCFG(model.Model):
             cumcounts = numpy.array(list(counter.values())).cumsum()
             return counter, items, cumcounts
 
-        self.structures = process(structures)
-        self.LDS = {k: process(v) for k, v in LDS.items()}
+        self.structures = process(structures)  # 三元组：第一个元素为structures，第二个元素为键列表，第三个值为值的梯形和
+        self.LDS = {k: process(v) for k, v in LDS.items()}  # LDS 的每个值同样转为三元组
         self.using_dictionary = dictionary is not None
 
     def generate_by_threshold(self, threshold):
