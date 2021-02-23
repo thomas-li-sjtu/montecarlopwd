@@ -54,7 +54,7 @@ class PCFG(model.Model):
             L_re = re.compile(r'[a-zA-Z]+')
             for w, count in dictionary.items():
                 for pat in L_re.findall(w):
-                    LDS[L, len(pat)][pat] += count
+                    LDS[L, len(pat)][pat] += count  # 此时的键为 (L，字母串长度)
 
         def process(counter):
             items = list(counter.keys())
@@ -97,6 +97,7 @@ class PCFG(model.Model):
     def generate(self):
 
         def pick(processed):
+            # 从列表中选择一个模板/单元，并返回对数概率
             counter, items, cum_counts = processed
             total = cum_counts[-1]
             idx = bisect.bisect_right(cum_counts, random.randrange(total))
@@ -109,6 +110,7 @@ class PCFG(model.Model):
             try:
                 lpnew, group = pick(self.LDS[pat_pair])
             except KeyError:
+                # 此时字母串来自字典
                 # we're using a dictionary with no long enough words. We just
                 # decrease the length until we find something suitable.
                 pat_t, l = pat_pair
