@@ -1,11 +1,4 @@
-# Copyright 2016 Symantec Corporation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-
+# standard library
 import bisect
 import collections
 import itertools
@@ -14,9 +7,9 @@ import operator
 import os
 import random
 import shelve
-
 import numpy
 
+# internal imports
 import model
 import ngram_chain
 
@@ -27,9 +20,8 @@ TmpNode = collections.namedtuple('TmpNode',
 
 class BackoffModel(ngram_chain.NGramModel):
 
-    def __init__(self, words, threshold, start_symbol=True,
-                 with_counts=False, shelfname=None):
-
+    def __init__(self, words, threshold, start_symbol=True, with_counts=False, shelfname=None):
+        # super().__init__(words, n, with_counts, shelfname)
         if not with_counts:
             words = [(1, w) for w in words]
 
@@ -46,13 +38,13 @@ class BackoffModel(ngram_chain.NGramModel):
             return
 
         lens, words = zip(*words)
-        lens = numpy.array(lens)
+        lens = numpy.array(lens)  # 每个密码的长度（计入开始和结束符号）
         nwords = len(words)
 
         def zerodict():
             return collections.defaultdict(itertools.repeat(0).__next__)
 
-        charcounts = zerodict()
+        charcounts = zerodict()  # 字符集字典，键为字符，值为出现次数
         for count, word in words:
             for c in word[start_symbol:]:
                 charcounts[c] += count
@@ -60,9 +52,9 @@ class BackoffModel(ngram_chain.NGramModel):
         totchars = sum(charcounts.values())
         transitions, counts = zip(*sorted(charcounts.items(),
                                           key=operator.itemgetter(1),
-                                          reverse=True))
-        transitions = ''.join(transitions)
-        counts = numpy.array(counts)
+                                          reverse=True))  # 根据出现次数排序
+        transitions = ''.join(transitions)  # 字符集组成的字符串，前面的字符在训练集中出现次数更多
+        counts = numpy.array(counts)  # 总密码数
         totchars = counts.sum()
 
         probabilities = counts / totchars
@@ -71,22 +63,22 @@ class BackoffModel(ngram_chain.NGramModel):
             nodes[''] = TmpNode(transitions,
                                 probabilities,
                                 probabilities.cumsum(),
-                                -numpy.log2(probabilities))
-
+                                -numpy.log2(probabilities))  # 第一个节点，也是空字符串对应的元组（下一个字符，概率，累计概率，对数概率）
+        print(nodes)
         leftidx = 0
         skipwords = set()
 
-        for n in range(2, lens[-threshold] + 1):
-
-            leftidx = bisect.bisect_left(lens, n)
+        for n in range(2, lens[-threshold] + 1):  # 从到 2 到 len(第threshold长的密码)，即 2 到对应长的 ngram
+            print(lens)
+            leftidx = bisect.bisect_left(lens, n)  # 不同长度对应的起始下标
 
             ngram_counter = zerodict()
             for i in range(leftidx, nwords):
-                if i in skipwords:
+                if i in skipwords:  # 如果 i 是要跳过的密码下标
                     continue
                 count, word = words[i]
                 skip = True
-                for j in range(lens[i] - n + 1):
+                for j in range(lens[i] - n + 1):  # 对于第 i 个密码
                     ngram = word[j: j + n]
                     if ngram[:-2] in nodes:
                         ngram_counter[ngram] += count
@@ -95,17 +87,17 @@ class BackoffModel(ngram_chain.NGramModel):
                     skipwords.add(i)
 
             tmp_dict = collections.defaultdict(list)
-            for ngram, count in ngram_counter.items():
-                tmp_dict[ngram[:-1]].append((ngram[-1], count))
+            for ngram, count in ngram_counter.items():  # 对于 ngram，前 n-1 为state，n 为 transition
+                tmp_dict[ngram[:-1]].append((ngram[-1], count))  # state:(transition, count)
 
             for state, sscounts in tmp_dict.items():
                 total = sum(count for _, count in sscounts)
-                if total < threshold:
+                if total < threshold:  # 存储计数超过阈值的所有子字符串
                     continue
                 trans_probs = {c: count / total
                                for c, count in sscounts
-                               if count >= threshold}
-                missing = 1 - sum(trans_probs.values())
+                               if count >= threshold}  # 某一个状态的转移概率计算
+                missing = 1 - sum(trans_probs.values())  # 没有找到转移结果的概率
                 if missing == 1:
                     continue
 
@@ -113,13 +105,13 @@ class BackoffModel(ngram_chain.NGramModel):
                     parent_state = self.nodes[state[1:]]
                     for c, p in zip(parent_state.transitions,
                                     parent_state.probabilities):
-                        trans_probs[c] = trans_probs.get(c, 0) + p * missing
+                        trans_probs[c] = trans_probs.get(c, 0) + p * missing  # 归一化
 
                 trans_probs = sorted(trans_probs.items(),
                                      key=operator.itemgetter(1),
-                                     reverse=True)
+                                     reverse=True)  # 转移概率字典排序
                 transitions, probabilities = zip(*trans_probs)
-                transitions = ''.join(transitions)
+                transitions = ''.join(transitions)  # 可能的转移字符串
                 probabilities = numpy.array(probabilities)
                 # probabilities must sum to 1
 #                assert abs(probabilities.sum() - 1) < 0.001
@@ -128,10 +120,10 @@ class BackoffModel(ngram_chain.NGramModel):
                                        probabilities.cumsum(),
                                        -numpy.log2(probabilities))
 
-        Node = ngram_chain.Node
+        Node = ngram_chain.Node  # collections.namedtuple('Node', 'transitions cumprobs logprobs')
         for state, node in self.nodes.items():
             nodes[state] = Node(node.transitions, node.cumprobs,
-                                node.logprobs)
+                                node.logprobs)  # nodes字典的值列表中丢弃转移概率数组，
 
     def update_state(self, state, transition):
         nodes = self.nodes

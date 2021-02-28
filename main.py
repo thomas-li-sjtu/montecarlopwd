@@ -56,9 +56,9 @@ def build_models(args, training):
     模型建立
     """
     now = time.time()
-    models = {'{}-gram'.format(i): ngram_chain.NGramModel(training, i)
-              for i in range(args.min_ngram, args.max_ngram + 1)}  # ngram没有考虑稀疏性的问题，这个在Backoff中被解决
-    # models['Backoff'] = backoff.BackoffModel(training, threshold=args.backoff_threshold)
+    # models = {'{}-gram'.format(i): ngram_chain.NGramModel(training, i)
+    #           for i in range(args.min_ngram, args.max_ngram + 1)}  # ngram没有考虑稀疏性的问题，这个在Backoff中被解决
+    models['Backoff'] = backoff.BackoffModel(training, threshold=args.backoff_threshold)
     # models['PCFG'] = pcfg.PCFG(training)
     print("[ + ] models have been built in {}".format(time.time()-now))
     return models
