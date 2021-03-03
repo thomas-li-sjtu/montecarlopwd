@@ -64,7 +64,6 @@ class BackoffModel(ngram_chain.NGramModel):
                                 probabilities,
                                 probabilities.cumsum(),
                                 -numpy.log2(probabilities))  # 第一个节点，也是空字符串对应的元组（下一个字符，概率，累计概率，对数概率）
-        print(nodes)
         leftidx = 0
         skipwords = set()
 

@@ -15,7 +15,7 @@ import estimator
 def parser_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--password-file', "-i",
-                        default="../Data/origin/CSDN/CSDN_10_test.txt",
+                        default="../Data/origin/Rockyou/Rockyou_10_train.txt",
                         dest="dataset",
                         help='password training set')
     parser.add_argument('--guess-file', "-g",
@@ -40,7 +40,7 @@ def parser_args():
                         help='threshold for backoff')
     parser.add_argument('--samplesize',
                         type=int,
-                        default=10000,
+                        default=10000000,
                         help='sample size for Monte Carlo model')
     parser.add_argument('--maxlen',
                         type=int,
@@ -56,9 +56,10 @@ def build_models(args, training):
     模型建立
     """
     now = time.time()
-    # models = {'{}-gram'.format(i): ngram_chain.NGramModel(training, i)
-    #           for i in range(args.min_ngram, args.max_ngram + 1)}  # ngram没有考虑稀疏性的问题，这个在Backoff中被解决
-    models['Backoff'] = backoff.BackoffModel(training, threshold=args.backoff_threshold)
+    models = {'{}-gram'.format(i): ngram_chain.NGramModel(training, i)
+              for i in range(args.min_ngram, args.max_ngram + 1)}  # ngram没有考虑稀疏性的问题，这个在Backoff中被解决
+    # models = {}
+    # models['Backoff'] = backoff.BackoffModel(training, threshold=args.backoff_threshold)
     # models['PCFG'] = pcfg.PCFG(training)
     print("[ + ] models have been built in {}".format(time.time()-now))
     return models
@@ -76,23 +77,33 @@ if __name__ == '__main__':
     now = time.time()
     montaCarlo_samples = {name: list(model.sample(args.samplesize, args.maxlen))
                           for name, model in models.items()}
-    estimators = {name: estimator.PosEstimator(sample)
-                  for name, sample in montaCarlo_samples.items()}
-    print("[ + ] estimators have been built in {}".format(time.time()-now))
-    modelnames = sorted(models)
+    samples = {}
+    for name, sample in montaCarlo_samples.items():
+        words = list(words for lp, words in sample)
+        samples[name] = words
 
-    # 对目标文本生成估计结果
-    with open(args.guess, "r", encoding="utf-8") as guesses:
-        with open(args.output, "w", encoding="utf-8", newline='') as estimate_file:
-            # newline=''，防止行之间留空行
-            writer = csv.writer(estimate_file)
-            writer.writerow(['password'] + modelnames)
+    for name, sample in samples.items():
+        with open("{}.txt".format(name), "w") as file:
+            for i in sample:
+                file.write(str(i) + "\n")
 
-            # 蒙特卡洛估计
-            for password in guesses:
-                password = password.strip('\r\n')
-
-                estimations = [estimators[name].position(models[name].logprob(password))
-                               for name in modelnames]
-                writer.writerow([password] + estimations)
-    print("[ + ] done")
+    # estimators = {name: estimator.PosEstimator(sample)
+    #               for name, sample in montaCarlo_samples.items()}
+    # print("[ + ] estimators have been built in {}".format(time.time()-now))
+    # modelnames = sorted(models)
+    #
+    # # 对目标文本生成估计结果
+    # with open(args.guess, "r", encoding="utf-8") as guesses:
+    #     with open(args.output, "w", encoding="utf-8", newline='') as estimate_file:
+    #         # newline=''，防止行之间留空行
+    #         writer = csv.writer(estimate_file)
+    #         writer.writerow(['password'] + modelnames)
+    #
+    #         # 蒙特卡洛估计
+    #         for password in guesses:
+    #             password = password.strip('\r\n')
+    #
+    #             estimations = [estimators[name].position(models[name].logprob(password))
+    #                            for name in modelnames]
+    #             writer.writerow([password] + estimations)
+    # print("[ + ] done")

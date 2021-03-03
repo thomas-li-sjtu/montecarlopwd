@@ -94,7 +94,7 @@ class PCFG(model.Model):
                         else:
                             stack.append((new_left, prefix + s, structure[1:]))
 
-    def generate(self):
+    def generate(self, maxlen=100):
 
         def pick(processed):
             # 从列表中选择一个模板/单元，并返回对数概率
