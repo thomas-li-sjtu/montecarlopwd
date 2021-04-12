@@ -46,24 +46,28 @@ def parser_args():
                         help='threshold for backoff')
     parser.add_argument('--samplesize',
                         type=int,
-                        default=100000000,
+                        default=10000000000,
                         help='total generation size for Monte Carlo model')
     parser.add_argument('--itersize',
                         type=int,
-                        default=1000000,
+                        default=10000000,
                         help='each generation size for Monte Carlo model')
     parser.add_argument('--maxlen',
                         type=int,
                         default=100,
                         help='max length for generated passwords')
     parser.add_argument('--target-file', '-t',
-                        default="../Data/origin/CSDN_clean/CSDN_clean.txt",
+                        default="../Data/origin/Rockyou_clean/Rockyou_clean_10_test.txt",
                         dest='target',
-                        help='generate to crack (default: Rockyou train)')
+                        help='generate to crack (default: Rockyou test)')
     parser.add_argument('--model', '-m',
                         default="PCFG",
                         dest='model',
                         help='model to build (default: PCFG)')
+    parser.add_argument('--out_name',
+                        required=True,
+                        dest='out_name',
+                        help='pickle name')
     args = parser.parse_args()
 
     return args
@@ -132,19 +136,18 @@ if __name__ == '__main__':
             cracked = 0
             for line in sample:
                 line = line[:-1]
-                if target_dict.get(line) and target_dict[line][1] == 0:
-                    target_dict[line] = [target_dict[line][0], 1]
+                if target_dict.get(line):
+                    tmp = target_dict[line][1]
+                    target_dict[line] = [target_dict[line][0], tmp+1]
 
             for value in target_dict.values():
-                if value[1] == 1:
+                if value[1] != 0:
                     cracked += value[0]
 
-            coverage[args.itersize*(i+1)] = round(cracked / total, 5)
+            coverage[args.itersize*(i+1)] = round(cracked / total, 4)
             print("now the coverage of {} is {}".format(name, coverage[args.itersize*(i+1)]))
-            # store coverage every 1000 batches
-            dump("{}.pickle".format(name),
+            dump("{}.pickle".format(args.out_name),
                           coverage)
-
 
 
     # montecarlo 估计
